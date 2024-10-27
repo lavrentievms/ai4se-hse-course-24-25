@@ -1,0 +1,3 @@
+[submodule "ToxiCR"]
+	path = ToxiCR
+	url = git@github.com:WSU-SEAL/ToxiCR.git
