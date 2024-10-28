@@ -5,9 +5,8 @@ import pandas as pd
 
 
 def prepare(raw_data: Path) -> datasets.Dataset:
-    dataset = pd.read_excel(raw_data)
-    # Implement dataset preparation code here
-    return datasets.Dataset.from_dict({'fake_data': [[1, 2], [3, 4]]})
+    data = pd.read_excel(raw_data)
+    return datasets.Dataset.from_pandas(data.dropna())
 
 
 def load_dataset(path: Path) -> datasets.Dataset:
