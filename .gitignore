@@ -1,4 +1,8 @@
+01-toxic-review-classification/prepared-dataset/
+
 ### Python ###
+**/venv
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
