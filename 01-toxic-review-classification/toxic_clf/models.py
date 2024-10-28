@@ -22,7 +22,7 @@ def classifier(dataset: datasets.Dataset, model):
     scores = []
 
     for depth in range(2400, 2800, 25):
-        tr = DecisionTreeClassifier(criterion='entropy', max_depth=depth)
+        tr = DecisionTreeClassifier(criterion='entropy', max_depth=depth, min_samples_split=3)
         kf = KFold(n_splits=10)
         score = cross_val_score(tr, X_train, y_train, cv=kf, scoring='f1_micro').mean()
         print(f"max_depth = {depth}; mean = {score.mean()}; std = {score.std()}")
