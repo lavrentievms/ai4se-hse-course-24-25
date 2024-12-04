@@ -94,7 +94,7 @@ def update_example(example: dict[str, Any]) -> dict[str, Any]:
 
 DATASET_PY_PREPARED = DATASET_PY.map(
         update_example,
-        cache_file_name='dataset_py_prepared1'
+        cache_file_name='dataset_py_prepared'
 )
 
 
