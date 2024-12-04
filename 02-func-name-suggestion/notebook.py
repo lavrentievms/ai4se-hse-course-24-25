@@ -15,28 +15,11 @@ DATASET_GO = DATASET.filter(
 
 import tree_sitter as ts
 import tree_sitter_python as tspython
+
+from dataclasses import dataclass
+from typing import Any
+
 from tree_sitter import Language, Parser
-
-PY_LANGUAGE = Language(tspython.language())
-PY_PARSER = Parser(PY_LANGUAGE)
-
-
-FUNCNAME_QUERY = PY_LANGUAGE.query("""
-    (function_definition
-         name: (identifier) @name
-    )
-""")
-
-FUNCBODY_QUERY = PY_LANGUAGE.query("""
-    (function_definition
-         body: (block) @body
-    )
-""")
-
-COMMENT_QUERY = PY_LANGUAGE.query("""
-    (block . (expression_statement (string) @comment))
-    (comment) @comment
-""")
 
 
 def assert_not_none[T](value: T | None) -> T:
@@ -45,48 +28,106 @@ def assert_not_none[T](value: T | None) -> T:
     return value
 
 
-def extract_funcname(whole_func: ts.Tree) -> tuple[str, bytes]:
-    node, _ = FUNCNAME_QUERY.captures(whole_func.root_node)[0]
-    name = assert_not_none(node.text).decode("utf-8")
-    body = assert_not_none(whole_func.root_node.text)
-    wo_name = body[:node.start_byte] + b"<extra_id_0>" + body[node.end_byte:]
-    return name, wo_name
+@dataclass
+class Analyzer:
+    parser: ts.Parser
+    funcname_query: ts.Query
+    comment_query: ts.Query
+
+    def extract_funcname(self, whole_func: ts.Tree) -> tuple[str, bytes]:
+        node, _ = self.funcname_query.captures(whole_func.root_node)[0]
+        name = assert_not_none(node.text).decode("utf-8")
+        body = assert_not_none(whole_func.root_node.text)
+        wo_name = body[:node.start_byte] + b"<extra_id_0>" + body[node.end_byte:]
+        return name, wo_name
 
 
-def strip_comments(body: ts.Tree) -> str:
-    source = assert_not_none(body.root_node.text)
-    comments = COMMENT_QUERY.captures(body.root_node)
+    def strip_comments(self, body: ts.Tree) -> str:
+        source = assert_not_none(body.root_node.text)
+        comments = self.comment_query.captures(body.root_node)
 
-    stripped = source
-    for node, _ in reversed(comments):  # Reverse to maintain indices
-        start, end = node.start_byte, node.end_byte
-        stripped = stripped[:start] + stripped[end:]
+        stripped = source
+        for node, _ in reversed(comments):  # Reverse to maintain indices
+            start, end = node.start_byte, node.end_byte
+            stripped = stripped[:start] + stripped[end:]
 
-    return stripped.decode("utf-8")
+        return stripped.decode("utf-8")
+
+
+    def update_example(self, example: dict[str, Any]) -> dict[str, Any]:
+        wfs = example["whole_func_string"]
+        tree = self.parser.parse(wfs.encode("utf-8"))
+        name, wo_name = self.extract_funcname(tree)
+        tree = self.parser.parse(wo_name)
+        body = assert_not_none(tree.root_node.text).decode("utf-8")
+        body_stripped = self.strip_comments(tree)
+        return {
+                "my_func_name": name,
+                "body": body,
+                "body_stripped": body_stripped
+        }
 
 
 ##^
 
-from typing import Any
+PY_LANGUAGE = Language(tspython.language())
+PY_PARSER = Parser(PY_LANGUAGE)
 
 
-def update_example(example: dict[str, Any]) -> dict[str, Any]:
-    wfs = example["whole_func_string"]
-    tree = PY_PARSER.parse(wfs.encode("utf-8"))
-    name, wo_name = extract_funcname(tree)
-    tree = PY_PARSER.parse(wo_name)
-    body = assert_not_none(tree.root_node.text).decode("utf-8")
-    body_stripped = strip_comments(tree)
-    return {
-            "my_func_name": name,
-            "body": body,
-            "body_stripped": body_stripped
-    }
+PY_FUNCNAME_QUERY = PY_LANGUAGE.query("""
+    (function_definition
+         name: (identifier) @name
+    )
+""")
 
+PY_COMMENT_QUERY = PY_LANGUAGE.query("""
+    (block . (expression_statement (string) @comment))
+    (comment) @comment
+""")
+
+
+PY_ANALYZER = Analyzer(
+    parser=PY_PARSER,
+    funcname_query=PY_FUNCNAME_QUERY,
+    comment_query=PY_COMMENT_QUERY,
+)
+
+
+##^
 
 DATASET_PY_PREPARED = DATASET_PY.map(
-        update_example,
+        PY_ANALYZER.update_example,
         cache_file_name="dataset_py_prepared"
+)
+
+##^
+
+GO_LANGUAGE = ts.Language()
+GO_PARSER = Parser(GO_LANGUAGE)
+
+
+GO_FUNCNAME_QUERY = GO_LANGUAGE.query("""
+    (function_declaration
+         name: (identifier) @name
+    )
+""")
+
+GO_COMMENT_QUERY = GO_LANGUAGE.query("""
+    (comment) @comment
+""")
+
+
+GO_ANALYZER = Analyzer(
+    parser=GO_PARSER,
+    funcname_query=GO_FUNCNAME_QUERY,
+    comment_query=GO_COMMENT_QUERY,
+)
+
+##^
+
+DATASET_GO_PREPARED = DATASET_GO.map(
+        GO_ANALYZER.update_example,
+        cache_file_name="dataset_go_prepared"
 )
 
 
@@ -106,11 +147,11 @@ def show_random_prepared_example(dataset: Dataset):
 
     print(
             f"\n--- Example #{idx} ---\n"
-            f"whole_func_string:\n{wfs}\n"
             f"{func_name=}\n"
             f"{my_func_name=}\n"
-            f"body:\n{body}\n"
-            f"body_stripped:\n{body_stripped}\n"
+            f"\nwhole_func_string:\n\n{wfs}\n"
+            f"\nbody:\n\n{body}\n"
+            f"\nbody_stripped:\n\n{body_stripped}\n"
     )
 
 ##^
