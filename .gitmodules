@@ -1,6 +1,3 @@
 [submodule "ToxiCR"]
 	path = 01-toxic-review-classification/ToxiCR
 	url = git@github.com:WSU-SEAL/ToxiCR.git
-[submodule "02-func-name-suggestion/tree-sitter-go"]
-	path = 02-func-name-suggestion/tree-sitter-go
-	url = git@github.com:tree-sitter/tree-sitter-go.git
