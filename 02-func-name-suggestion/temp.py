@@ -1,9 +1,16 @@
-from typing import Any
-from datasets import load_dataset
+from datasets import Dataset, load_dataset
+
+##^
 
 DATASET = load_dataset("code-search-net/code_search_net", split="test")
-DATASET_PY = DATASET.filter(lambda item: item["language"] == "python")
-DATASET_GO = DATASET.filter(lambda item: item["language"] == "go")
+DATASET_PY = DATASET.filter(
+        lambda item: item["language"] == "python",
+        cache_file_name="dataset_py"
+)
+DATASET_GO = DATASET.filter(
+        lambda item: item["language"] == "go",
+        cache_file_name="dataset_go"
+)
 
 
 ##^
@@ -68,6 +75,8 @@ def strip_comments(body: ts.Node) -> str:
 
 ##^
 
+from typing import Any
+
 
 def update_example(example: dict[str, Any]) -> dict[str, Any]:
     wfs = example['whole_func_string']
@@ -75,7 +84,7 @@ def update_example(example: dict[str, Any]) -> dict[str, Any]:
     name = funcname(tree)
     body_node = funcbody_node(tree)
     body = funcbody(body_node)
-    body_stripped = funcbody(body_node)
+    body_stripped = strip_comments(body_node)
     return {
             'my_func_name': name,
             'body': body,
@@ -83,4 +92,33 @@ def update_example(example: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-DATASET_PY_PREPARED = DATASET_PY.map(update_example)
+DATASET_PY_PREPARED = DATASET_PY.map(
+        update_example,
+        cache_file_name='dataset_py_prepared1'
+)
+
+
+##^
+
+from random import randint
+
+
+def show_random_example(dataset: Dataset, dataset_prepared: Dataset):
+    idx = randint(0, len(dataset))
+    example, example_prep = dataset[idx], dataset_prepared[idx]
+    wfs = example["whole_func_string"]
+    func_name = example["func_name"]
+    my_func_name = example_prep["my_func_name"]
+    body = example_prep["body"]
+    body_stripped = example_prep["body_stripped"]
+
+    print(
+            f"\n--- Example #{idx} ---\n"
+            f"whole_func_string:\n{wfs}\n"
+            f"{func_name=}\n"
+            f"{my_func_name=}\n"
+            f"body:\n{body}\n"
+            f"body_stripped:\n{body_stripped}\n"
+    )
+
+##^
