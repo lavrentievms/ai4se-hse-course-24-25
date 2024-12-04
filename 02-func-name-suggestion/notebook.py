@@ -226,49 +226,21 @@ DATASET_GO_WITH_GUESSES = DATASET_GO_PREPARED.take(1000).map(
 
 ##^
 
-from random import randint
-
-
-def show_random_guesses(dataset: Dataset):
-    idx = randint(0, len(dataset) - 1)
-    example = dataset[idx]
-    real_name = example["my_func_name"]
-    guess_with_comments = example["guess"]
-    guess_wo_comments = example["guess_wo_comments"]
-
-    print(
-            f"\n--- Example #{idx} ---\n"
-            f"{real_name=}\n"
-            f"{guess_with_comments=}\n"
-            f"{guess_wo_comments=}\n"
-    )
-
-
-##^
-
 import evaluate
 
 EXACT_MATCH = evaluate.load("exact_match")
 ROUGE = evaluate.load("rouge")
 
-def eval_results(dataset: Dataset):
-    em_w_comments = EXACT_MATCH.compute(
+def eval_results(dataset: Dataset, column: str):
+    em = EXACT_MATCH.compute(
             references=dataset["my_func_name"],
-            predictions=dataset["guess"])
-    rouge_w_comments = ROUGE.compute(
+            predictions=dataset[column])
+    rouge = ROUGE.compute(
             references=dataset["my_func_name"],
-            predictions=dataset["guess"])
-    print(f"{em_w_comments=}")
-    print(f"{rouge_w_comments=}")
-
-    em_wo_comments = EXACT_MATCH.compute(
-            references=dataset["my_func_name"],
-            predictions=dataset["guess_wo_comments"])
-    rouge_wo_comments = ROUGE.compute(
-            references=dataset["my_func_name"],
-            predictions=dataset["guess_wo_comments"])
-    print(f"{em_wo_comments=}")
-    print(f"{rouge_wo_comments=}")
+            predictions=dataset[column])
+    print(f"Score (column = {column})")
+    print(f"{em=}")
+    print(f"{rouge=}")
 
 # Python
 # em_w_comments={'exact_match': np.float64(0.212)}
@@ -281,3 +253,37 @@ def eval_results(dataset: Dataset):
 # rouge_w_comments={'rouge1': np.float64(0.752), 'rouge2': np.float64(0.0), 'rougeL': np.float64(0.7526666666666667), 'rougeLsum': np.float64(0.7516666666666667)}
 # em_wo_comments={'exact_match': np.float64(0.1)}
 # rouge_wo_comments={'rouge1': np.float64(0.164), 'rouge2': np.float64(0.0), 'rougeL': np.float64(0.16366666666666668), 'rougeLsum': np.float64(0.164)}
+
+
+##^
+
+from random import randint
+
+
+def show_random_guesses(dataset: Dataset):
+    idx = randint(0, len(dataset) - 1)
+    example = dataset[idx]
+    real_name = example["my_func_name"]
+    guess_with_comments = example["guess"]
+    guess_wo_comments = example["guess_wo_comments"]
+
+    rouge_w_comments = assert_not_none(ROUGE.compute(
+        references=[real_name],
+        predictions=[guess_with_comments]
+    ))["rouge1"]
+    rouge_wo_comments = assert_not_none(ROUGE.compute(
+        references=[real_name],
+        predictions=[guess_wo_comments]
+    ))["rouge1"]
+
+    full_text = example["body"]
+
+    print(
+            f"\n--- Example #{idx} ---\n"
+            f"{real_name=}\n"
+            f"{guess_with_comments=}\n"
+            f"{guess_wo_comments=}\n\n"
+            f"{rouge_w_comments=}\n"
+            f"{rouge_wo_comments=}\n\n"
+            f"{full_text}\n"
+    )
